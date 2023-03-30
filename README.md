@@ -2,4 +2,4 @@
 
 Spec: [https://cs61c.org/sp22/projects/proj1/](https://cs61c.org/sp22/projects/proj1/)
 
-TODO: describe what you did
+3-30 done

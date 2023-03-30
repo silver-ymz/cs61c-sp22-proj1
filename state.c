@@ -97,7 +97,12 @@ void free_state(game_state_t *state) {
 
 /* Task 3 */
 void print_board(game_state_t *state, FILE *fp) {
-  // TODO: Implement this function.
+  int row = state->y_size;
+
+  for (int i = 0; i < row; i++) {
+    fprintf(fp, "%s\n", state->board[i]);
+  }
+
   return;
 }
 
@@ -109,71 +114,225 @@ void save_board(game_state_t *state, char *filename) {
 }
 
 /* Task 4.1 */
-static bool is_tail(char c) {
-  // TODO: Implement this function.
-  return true;
-}
+static bool is_tail(char c) { return strchr("wasd", c) != NULL; }
 
-static bool is_snake(char c) {
-  // TODO: Implement this function.
-  return true;
-}
+static bool is_snake(char c) { return strchr("wasd^<>vx", c) != NULL; }
 
 static char body_to_tail(char c) {
-  // TODO: Implement this function.
-  return '?';
+  switch (c) {
+  case '^':
+    return 'w';
+  case '<':
+    return 'a';
+  case '>':
+    return 'd';
+  case 'v':
+    return 's';
+  default:
+    return 0;
+  }
 }
 
 static int incr_x(char c) {
-  // TODO: Implement this function.
+  if (c == '>' || c == 'd') {
+    return 1;
+  }
+
+  if (c == '<' || c == 'a') {
+    return -1;
+  }
+
   return 0;
 }
 
 static int incr_y(char c) {
-  // TODO: Implement this function.
+  if (c == 'v' || c == 's') {
+    return 1;
+  }
+
+  if (c == '^' || c == 'w') {
+    return -1;
+  }
+
   return 0;
 }
 
 /* Task 4.2 */
 static char next_square(game_state_t *state, int snum) {
-  // TODO: Implement this function.
-  return '?';
+  const int head_x = state->snakes[snum].head_x;
+  const int head_y = state->snakes[snum].head_y;
+  const char head = get_board_at(state, head_x, head_y);
+
+  const int x = head_x + incr_x(head);
+  const int y = head_y + incr_y(head);
+
+  return get_board_at(state, x, y);
 }
 
 /* Task 4.3 */
 static void update_head(game_state_t *state, int snum) {
-  // TODO: Implement this function.
-  return;
+  const int head_x = state->snakes[snum].head_x;
+  const int head_y = state->snakes[snum].head_y;
+  const char head = get_board_at(state, head_x, head_y);
+
+  const int x = head_x + incr_x(head);
+  const int y = head_y + incr_y(head);
+
+  set_board_at(state, x, y, head);
+
+  state->snakes[snum].head_x = x;
+  state->snakes[snum].head_y = y;
 }
 
 /* Task 4.4 */
 static void update_tail(game_state_t *state, int snum) {
-  // TODO: Implement this function.
-  return;
+  const int tail_x = state->snakes[snum].tail_x;
+  const int tail_y = state->snakes[snum].tail_y;
+  const char tail = get_board_at(state, tail_x, tail_y);
+
+  const int x = tail_x + incr_x(tail);
+  const int y = tail_y + incr_y(tail);
+
+  set_board_at(state, tail_x, tail_y, ' ');
+  set_board_at(state, x, y, body_to_tail(get_board_at(state, x, y)));
+
+  state->snakes[snum].tail_x = x;
+  state->snakes[snum].tail_y = y;
 }
 
 /* Task 4.5 */
 void update_state(game_state_t *state, int (*add_food)(game_state_t *state)) {
-  // TODO: Implement this function.
-  return;
+  const int snake_size = state->num_snakes;
+
+  for (int i = 0; i < snake_size; i++) {
+    if (!state->snakes[i].live) {
+      continue;
+    }
+
+    const char next = next_square(state, i);
+
+    if (next == ' ') {
+      update_head(state, i);
+      update_tail(state, i);
+
+      continue;
+    }
+
+    if (next == '*') {
+      update_head(state, i);
+
+      add_food(state);
+
+      continue;
+    }
+
+    state->snakes[i].live = false;
+
+    const int head_x = state->snakes[i].head_x;
+    const int head_y = state->snakes[i].head_y;
+
+    set_board_at(state, head_x, head_y, 'x');
+  }
 }
 
 /* Task 5 */
 game_state_t *load_board(char *filename) {
-  // TODO: Implement this function.
-  return NULL;
+  game_state_t *state = malloc(sizeof(game_state_t));
+  if (state == NULL) {
+    allocation_failed();
+  }
+
+  char buffer[10010], *(char_arr_ptr[10000]);
+
+  FILE *file = fopen(filename, "r");
+
+  if (fgets(buffer, 10000, file) == NULL) {
+    state->x_size = 0;
+    state->y_size = 0;
+
+    return state;
+  }
+
+  const int x_size = strlen(buffer) - 1;
+  int y_size = 0;
+
+  do {
+    char_arr_ptr[y_size] = malloc(sizeof(char) * (x_size + 1));
+    strncpy(char_arr_ptr[y_size], buffer, x_size);
+    char_arr_ptr[y_size][x_size] = '\0';
+    y_size++;
+  } while (fgets(buffer, 10000, file) != NULL);
+
+  char **board = malloc(sizeof(char *) * y_size);
+  if (board == NULL) {
+    allocation_failed();
+  }
+
+  for (int i = 0; i < y_size; i++) {
+    board[i] = char_arr_ptr[i];
+  }
+
+  state->board = board;
+  state->x_size = x_size;
+  state->y_size = y_size;
+
+  return state;
 }
 
 /* Task 6.1 */
 static void find_head(game_state_t *state, int snum) {
-  // TODO: Implement this function.
-  return;
+  int x = state->snakes[snum].tail_x;
+  int y = state->snakes[snum].tail_y;
+
+  while (true) {
+    const char now_ch = get_board_at(state, x, y);
+    const int x_next = x + incr_x(now_ch);
+    const int y_next = y + incr_y(now_ch);
+
+    if (!is_snake(get_board_at(state, x_next, y_next))) {
+      break;
+    }
+
+    x = x_next;
+    y = y_next;
+  }
+
+  state->snakes[snum].head_x = x;
+  state->snakes[snum].head_y = y;
 }
 
 /* Task 6.2 */
 game_state_t *initialize_snakes(game_state_t *state) {
-  // TODO: Implement this function.
-  return NULL;
+  const int x_size = state->x_size;
+  const int y_size = state->y_size;
+  int snake_size = 0;
+  int snake_x[1000], snake_y[1000];
+
+  for (int i = 0; i < x_size; i++) {
+    for (int j = 0; j < y_size; j++) {
+      if (is_tail(get_board_at(state, i, j))) {
+        snake_x[snake_size] = i;
+        snake_y[snake_size] = j;
+        snake_size++;
+
+        if (snake_size == 1000) {
+          fprintf(stderr, "too many snakes");
+          exit(1);
+        }
+      }
+    }
+  }
+
+  state->num_snakes = snake_size;
+  state->snakes = malloc(sizeof(snake_t) * snake_size);
+  for (int i = 0; i < snake_size; i++) {
+    state->snakes[i].tail_x = snake_x[i];
+    state->snakes[i].tail_y = snake_y[i];
+    state->snakes[i].live = true;
+    find_head(state, i);
+  }
+
+  return state;
 }
 
 void allocation_failed() {
